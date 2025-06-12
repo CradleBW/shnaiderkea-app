@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
 export default function ClientPanel() {
   const [roomLength, setRoomLength] = useState('')
@@ -6,25 +6,18 @@ export default function ClientPanel() {
   const [roomHeight, setRoomHeight] = useState('')
   const [roomImage, setRoomImage] = useState(null)
   const [category, setCategory] = useState('Плитка')
+  const [materials, setMaterials] = useState([])
   const [selectedMaterial, setSelectedMaterial] = useState(null)
   const [result, setResult] = useState('')
 
-  const materials = [
-    {
-      name: 'Плитка серая 30x30',
-      category: 'Плитка',
-      width: 30,
-      height: 30,
-      image_url: 'https://res.cloudinary.com/dm3jegk4k/image/upload/v1718200000/sample.jpg'
-    },
-    {
-      name: 'Обои цветочные 53x1000',
-      category: 'Обои',
-      width: 53,
-      height: 1000,
-      image_url: 'https://res.cloudinary.com/dm3jegk4k/image/upload/v1718200000/sample.jpg'
+  useEffect(() => {
+    async function fetchMaterials() {
+      const res = await fetch('https://shnaiderkea-backend.onrender.com/api/materials')
+      const data = await res.json()
+      setMaterials(data)
     }
-  ]
+    fetchMaterials()
+  }, [])
 
   const handleCalculate = () => {
     if (!selectedMaterial || !roomLength || !roomWidth || (category !== 'Пол' && !roomHeight)) {
