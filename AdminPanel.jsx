@@ -7,6 +7,7 @@ export default function AdminPanel() {
   const [height, setHeight] = useState('')
   const [file, setFile] = useState(null)
   const [status, setStatus] = useState('')
+  const [resultUrl, setResultUrl] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -19,10 +20,20 @@ export default function AdminPanel() {
     formData.append('height', height)
     formData.append('file', file)
 
-    // Заглушка — пока backend не подключён
-    setTimeout(() => {
-      setStatus('Загружено успешно (заглушка)')
-    }, 1000)
+    try {
+      const response = await fetch('https://shnaiderkea-backend.onrender.com/api/materials', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) throw new Error('Ошибка загрузки')
+      const data = await response.json()
+      setStatus('Загружено успешно ✅')
+      setResultUrl(data.image_url)
+    } catch (err) {
+      setStatus('Ошибка при загрузке ❌')
+      console.error(err)
+    }
   }
 
   return (
@@ -51,6 +62,7 @@ export default function AdminPanel() {
         <button type="submit">Загрузить</button>
       </form>
       <p>{status}</p>
+      {resultUrl && <img src={resultUrl} alt="Результат" style={{ width: '100%', marginTop: '10px' }} />}
     </div>
   )
 }
