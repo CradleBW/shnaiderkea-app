@@ -5,16 +5,26 @@ export default function ClientPanel() {
   const [roomWidth, setRoomWidth] = useState('')
   const [roomHeight, setRoomHeight] = useState('')
   const [roomImage, setRoomImage] = useState(null)
+  const [roomImageFile, setRoomImageFile] = useState(null)
   const [category, setCategory] = useState('Плитка')
   const [materials, setMaterials] = useState([])
   const [selectedMaterial, setSelectedMaterial] = useState(null)
   const [result, setResult] = useState('')
+  const [error, setError] = useState('')
+  const [generatedImage, setGeneratedImage] = useState(null)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     async function fetchMaterials() {
-      const res = await fetch('https://shnaiderkea-backend.onrender.com/api/materials')
-      const data = await res.json()
-      setMaterials(data)
+      try {
+        const res = await fetch('https://shnaiderkea-backend.onrender.com/api/materials')
+        const data = await res.json()
+        setMaterials(data)
+        setError('')
+      } catch (e) {
+        setError('Ошибка загрузки материалов с сервера')
+        console.error(e)
+      }
     }
     fetchMaterials()
   }, [])
@@ -44,9 +54,48 @@ export default function ClientPanel() {
     setResult(`Нужно ${quantity} штук материала "${selectedMaterial.name}"`)
   }
 
+  const handleGenerateAI = async () => {
+    if (!selectedMaterial || !roomImageFile) {
+      alert("Выберите материал и загрузите фото комнаты")
+      return
+    }
+
+    setLoading(true)
+    const formData = new FormData()
+    formData.append('image', roomImageFile)
+    formData.append('prompt', `Покажи ${selectedMaterial.category.toLowerCase()} "${selectedMaterial.name}" в интерьере`)
+
+    try {
+      const res = await fetch('https://shnaiderkea-backend.onrender.com/api/generate', {
+        method: 'POST',
+        body: formData
+      })
+
+      const data = await res.json()
+      if (data?.prediction?.urls?.get) {
+        const pollRes = await fetch(data.prediction.urls.get)
+        const final = await pollRes.json()
+        if (final.output && final.output.length > 0) {
+          setGeneratedImage(final.output[0])
+        } else {
+          setError("Ошибка генерации изображения")
+        }
+      } else {
+        setError("Ошибка отправки запроса к ИИ")
+      }
+    } catch (err) {
+      console.error(err)
+      setError("Ошибка генерации изображения")
+    }
+
+    setLoading(false)
+  }
+
   return (
     <div style={{ padding: '20px', maxWidth: '600px', margin: 'auto' }}>
       <h2>Клиент: Подбор материалов</h2>
+
+      {error && <p style={{ color: 'red' }}>{error}</p>}
 
       <label>Выберите категорию:<br />
         <select value={category} onChange={e => setCategory(e.target.value)}>
@@ -73,7 +122,10 @@ export default function ClientPanel() {
       )}
 
       <label>Фото комнаты:<br />
-        <input type="file" onChange={e => setRoomImage(URL.createObjectURL(e.target.files[0]))} />
+        <input type="file" onChange={e => {
+          setRoomImage(URL.createObjectURL(e.target.files[0]))
+          setRoomImageFile(e.target.files[0])
+        }} />
       </label><br /><br />
 
       {roomImage && <img src={roomImage} alt="Комната" style={{ width: '100%' }} />}
@@ -96,6 +148,17 @@ export default function ClientPanel() {
 
       <button onClick={handleCalculate}>Рассчитать</button>
       <p>{result}</p>
+
+      <button onClick={handleGenerateAI} disabled={loading}>
+        {loading ? "Генерация..." : "Показать в интерьере (ИИ)"}
+      </button><br /><br />
+
+      {generatedImage && (
+        <>
+          <p>Результат:</p>
+          <img src={generatedImage} alt="Результат" style={{ width: '100%' }} />
+        </>
+      )}
     </div>
   )
 }
